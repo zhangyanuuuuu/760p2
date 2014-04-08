@@ -193,7 +193,7 @@ myvalue(double *x, INT n)
 void
 mygrad(double *g, double *x, INT n) 
 {
-	double xp, xn, yp, yn, xp_new, xn_new, yp_new, yn_new;
+	double xp, xn, yp, yn, xp_plus, xn_plus, yp_plus, yn_plus, xp_minus, xn_minus, yp_minus, yn_minus;
 	double delta_x, delta_y;
 	int gate_idx, net_idx;
 	int index_x, index_y;
@@ -211,17 +211,22 @@ mygrad(double *g, double *x, INT n)
 				yp += exp(x[index_y]/alpha);
 				yn += exp(-x[index_y]/alpha);
 			}
-			
-			xp_new = xp - exp(x[i]/alpha) + exp((x[i]+delta_h)/alpha);
-			xn_new = xn - exp(-x[i]/alpha) + exp(-(x[i]+delta_h)/alpha);
-			yp_new = yp - exp(x[i+1]/alpha) + exp((x[i+1]+delta_h)/alpha);
-			yn_new = yn - exp(-x[i+1]/alpha) + exp(-(x[i+1]+delta_h)/alpha);
 
-			delta_x += alpha*(log(xp_new)-log(xp)+log(xn_new)-log(xn));
-			delta_y += alpha*(log(yp_new)-log(yp)+log(yn_new)-log(yn));
+			xp_plus = xp - exp(x[i]/alpha) + exp((x[i]+delta_h)/alpha);
+			xn_plus = xn - exp(-x[i]/alpha) + exp(-(x[i]+delta_h)/alpha);
+			yp_plus = yp - exp(x[i+1]/alpha) + exp((x[i+1]+delta_h)/alpha);
+			yn_plus = yn - exp(-x[i+1]/alpha) + exp(-(x[i+1]+delta_h)/alpha);
+
+			xp_minus = xp - exp(x[i]/alpha) + exp((x[i]-delta_h)/alpha);
+			xn_minus = xn - exp(-x[i]/alpha) + exp(-(x[i]-delta_h)/alpha);
+			yp_minus = yp - exp(x[i+1]/alpha) + exp((x[i+1]-delta_h)/alpha);
+			yn_minus = yn - exp(-x[i+1]/alpha) + exp(-(x[i+1]-delta_h)/alpha);
+
+			delta_x += alpha*(log(xp_plus)-log(xp_minus)+log(xn_plus)-log(xn_minus));
+			delta_y += alpha*(log(yp_plus)-log(yp_minus)+log(yn_plus)-log(yn_minus));
 		}
-		g[i] = delta_x/delta_h;
-		g[i+1] = delta_y/delta_h;
+		g[i] = delta_x/(2*delta_h);
+		g[i+1] = delta_y/(2*delta_h);
 	}
 }
 
