@@ -50,9 +50,6 @@ int* gateNetListSize;
 //             parser                   //
 //                                      //
 //////////////////////////////////////////
-//
-#define max(a,b) (a>b?a:b)
-#define min(a,b) (a<b?a:b)
 void
 parse(char* fileName)
 {
@@ -232,122 +229,21 @@ mygrad(double *g, double *x, INT n)
 		g[i+1] = delta_y/(2*delta_h);
 	}
 }
-double p_potential(double x){
- double ans=1/(1+exp(2*20*(x-r/2)));
 
-}
-
-double gate_covered_grids(double x, double y, int i){ 
-   double val=0;
-   int left,right,up,down;
-   double potential;
-        left=max(0,x-Gates[i].width/2-r);
-        right=min(100,x+Gates[i].width/2+r);
-        up=max(0,y-r);
-        down=min(100,y+r);
-        for(int row=up;row<=down;row++)
-          for(int col=left;col<=right;col++){
-            potential=p_potential(fabs(row-x))*p_potential(fabs(col-y))*Gates[i].width/(r*r);
-            val+=pow(potential-Cg,2);
-
-        }
-  // cout<<"gate"<<val<<endl;
-   return val;
- 
-}
-double
-myval_overlap(double *x, INT n){
-   double val=0;
-   for(int i=0;i<n;i+=2){
-      val+=gate_covered_grids(x[i],x[i+1],i/2+1);
-     }
-   cout<<"val for overlap"<<val<<endl;
-   return val;
-}
-void  
-mygrad_overlap(double *g, double *x, INT n){
-    
-   double potential;
-   int left,right,up,down;
-   double x_minus,x_plus,y_minus,y_plus,x_delta,y_delta;
-    for(int i=0;i<n;i+=2){      
-        x_plus=gate_covered_grids(x[i]+delta_h,x[i+1],i/2+1);
-        x_minus=gate_covered_grids(x[i]-delta_h,x[i+1],i/2+1);
-        g[i]=(x_plus-x_minus)/(2*delta_h);
-        y_plus=gate_covered_grids(x[i],x[i+1]+delta_h,i/2+1);
-        y_minus=gate_covered_grids(x[i],x[i+1]-delta_h,i/2+1);
-        g[i+1]=(y_plus-y_minus)/(2*delta_h);               
-
-//		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
-    }
-
-	for (int i = 0; i < n ; i++) {
-		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
-	}
-}
-
-double 
-costfun(double *x, INT n){
-   return myvalue(x,n)+myval_overlap(x,n);
-
-}
-
-void
-costfungrad(double *g, double *x, INT n){
-   double *g1=new double [n];
-   double *g2=new double [n];
-   mygrad(g1,x,n);
-   mygrad_overlap(g2,x,n);
-   for(int i=0;i<n;i++)
-     g[i]=g1[i]+g2[i];
-
-}
-
-// plain version of grad
-/*
 void 
 myval_overlap(double *x, INT n){
-   double val=0;
-   double potential;
-   int left,right,up,down;
-   for(int i=0;i<n;i+=2){
-        left=x[i]-Gates[i/2].width/2-r;
-        right=x[i]+Gates[i/2].width/2+r;
-        up=x[i+1].gy-r;
-        down=x[i+1].gy+r;
-        for(int row=up;row<=down;row++)
-          for(int col=left;col<=right;col++){
-            potential=p_potential(fabs(row-x[i]))*p_potential(fabs(col-x[i+1]))*Gate[i/2].width/(r*r);
-            val+=pow(potential-Cg,2);
-
-        }
-        
+  for(int i=0;i<n;i+=2){
+    
 
 
-    }
-   return val;
- 
+  }
+
 }
 
 void  
 mygrad_overlap(double *g, double *x, INT n){
-    
-   double potential;
-   int left,right,up,down;
-   double x_minus,x_plus,y_minus,y_plus,x_delta,y_delta;
-    for(int i=0;i<n;i+=2){      
-        left=x[i]-Gates[i/2].width/2-r;
-        right=x[i]+Gates[i/2].width/2+r;
-        up=x[i+1].gy-r;
-        down=x[i+1].gy+r;
 
-        for(int row=up;row<=down;row++)
-          for(int col=left;col<=right;col++){
-            x_plus=p_potential(fabs(row-x[i]-delta_h))*p_potential(fabs(col-x[i+1]))*Gate[i/2].width/(r*r);
-           
-            x_minus=p_potential(fabs(row-x[i]+delta_h))*p_potential(fabs(col-x[i+1]))*Gate[i/2].width/(r*r);
 
-    }
 
 }
 
@@ -414,9 +310,6 @@ main(int argc, char *argv[])
 		printf("Usage: ./exe <filename>\n");
 		exit(-1);
 	}
-   #ifdef DEBUG
-    argv[1]="./benchmark/toy1";
-   #endif
 	parse(argv[1]);
 
 	//put the value of gate position to array x
@@ -438,7 +331,7 @@ main(int argc, char *argv[])
 
 #ifdef DEBUG
 	double *g = new double [n];
-	costfungrad(g,x,n);
+	mygrad(g,x,n);
 	for (int i = 0; i < n ; i++) {
 		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
 	}
@@ -446,12 +339,12 @@ main(int argc, char *argv[])
 
 	//solve it
   printf("FIRST CALL TO CG_DESCENT, cg_tol=%g\n", cg_tol);
-	cg_return = cg_descent(x, n, &Stats, &Parm, cg_tol, costfun, costfungrad, NULL, NULL);
+	cg_return = cg_descent(x, n, &Stats, &Parm, cg_tol, myvalue, mygrad, NULL, NULL);
 #ifdef DEBUG
 	for (int i = 0; i < numGates; i++) {
 		printf("gate %d is at position (%f,%f)\n", i+1, x[2*i], x[2*i+1]);
 	}
-	cout<<"HPWL is "<<costfun(x,numGates*2)<<endl;
+	cout<<"HPWL is "<<myvalue(x,numGates*2)<<endl;
 #endif
 	
 }
