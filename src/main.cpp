@@ -234,7 +234,7 @@ mygrad(double *g, double *x, INT n)
 }
 double p_potential(double x){
  double ans=1/(1+exp(2*20*(x-r/2)));
-
+ return ans;
 }
 
 double gate_covered_grids(double x, double y, int i){ 
@@ -282,13 +282,48 @@ mygrad_overlap(double *g, double *x, INT n){
     }
 
 	for (int i = 0; i < n ; i++) {
-		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
+		cout<<"Direvative for gate "<<i/2+1<<" is "<<g[i]<<endl;
 	}
 }
+double get_boundary_pel(double x, double y, int i){
+       
+   double width;
+   double pel=0;
+        width=Gates[i/2+1].width/2;
+        if(x-width<0) pel+=pow((width-x)/alpha,2);
+        if(x+width>100) pel+=pow((x+width-100)/alpha,2);
+        if(y-0.5<0) pel+=pow((0.5-y)/alpha,2);
+        if(y+0.5>100) pel+=pow((y+0.5-100)/alpha,2);
+  return pel;
+}
 
+double myval_boundary(double *x, INT n){
+   double pel=0;
+   for(int i=0;i<n;i+=2)
+    {
+       pel+= get_boundary_pel(x[i],x[i+1],i);
+    }
+   return pel;
+
+}
+
+double mygrad_boudary(double*g, double *x, INT n){
+   double x_plus,x_minus,y_plus,y_minus;
+   for(int i=0;i<n;i+=2){
+        x_plus=get_boundary_pel(x[i]+delta_h,x[i+1],i);
+        x_minus=get_boundary_pel(x[i]-delta_h,x[i+1],i);
+        y_plus=get_boundary_pel(x[i],x[i+1]+delta_h,i);
+        y_minus=get_boundary_pel(x[i],x[i+1]-delta_h,i);
+       g[i]=(x_plus-x_minus)/(2*delta_h);
+       g[i+1]=(y_plus-y_minus)/(2*delta_h);
+
+    }
+
+
+}
 double 
 costfun(double *x, INT n){
-   return myvalue(x,n)+myval_overlap(x,n);
+   return myvalue(x,n)+myval_overlap(x,n)+myval_boundary(x,n);
 
 }
 
@@ -296,10 +331,12 @@ void
 costfungrad(double *g, double *x, INT n){
    double *g1=new double [n];
    double *g2=new double [n];
+   double *g3=new double [n];
    mygrad(g1,x,n);
    mygrad_overlap(g2,x,n);
+   mygrad_boudary(g3,x,n);
    for(int i=0;i<n;i++)
-     g[i]=g1[i]+g2[i];
+     g[i]=g1[i]+g2[i]+g3[i];
 
 }
 
@@ -415,7 +452,7 @@ main(int argc, char *argv[])
 		exit(-1);
 	}
    #ifdef DEBUG
-    argv[1]="./benchmark/toy1";
+    //argv[1]="./benchmark/toy1";
    #endif
 	parse(argv[1]);
 
