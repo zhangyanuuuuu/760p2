@@ -1,0 +1,288 @@
+#
+# HOW TO USE cmuview2
+# 
+#   what file formats the viewer can read
+#   This file is a "null" demo movie file for cmuView.
+#   It will open and run just fine--it just draws a few boring
+#   example rectangles, lines, ovals, etc.
+#   But, it describes what format you need to
+#   output to be able to MAKE a cmuview2-able movie.
+#
+# first line is "cmumovie" with 3 params: live replay millisecdelay
+#    live == 1 means this is thru a pipe, not from a file
+#    live == 0 means this is from a file
+#    replay == 0 means we don't want to cache old frames
+#                which means you cannout rewind the move using
+#                the "previous" button.
+#    replay == 1 means we do want to cache old frames
+#    millisecdelay is an int, in ms, for how long to display each movie frame
+#                  if this is a "live" movie
+#
+# NOTE  live=1 is NOT supported (yet) in this version!
+#
+#  live, replay == 1,0 or 1,1 is not supported just yet
+#  live, replay == 0,0 reads a set of commands from a file, no rewind
+#  live, replay == 0,1 supports replay, rewind on frames
+cmumovie 0 1 500
+
+# cmuconfig tells the cmuview2-er how big is the underlying
+# canvas on which you plan to be drawing objects like
+# rectangles, lines, etc.  Rule of thumb is:  if you
+# are working in the first quadrant with x in [0, XX]
+# and y in [0, YY]. then you give (XX,YY) as the width, height,
+# and then you config the underlying canvas itself as 10x
+# this size, ie [10*0  10*0  10*XX  10*YY].
+# Don't worry overmuch about this--as long as you start
+# the sizing in a sensible way, cmuview2 will manage the
+# canvas coords and all zooming stuff automatically
+# after you set it up.  Format is:
+# cmuconfig  width height  canvasminx canvasminy canvasmaxx canvasmaxy
+cmuconfig  100.0 100.0   0 0 1000.0 1000.0
+
+# The ruler allows you to measure things.
+# you give it one parameter, the "distance"
+# in your drawn coord system (ie, the nums on a draw command)
+# that == 1 ruler "unit".   
+# Format is  cmuruler  scalefactor  "unit"
+# The ruler does the rest
+cmuruler 0.005 "nanoFoobars"
+
+# After this setup preamble, then each frame of a cmuview2 movie 
+# needs to be surrounded by these two lines:  cmuframe, which 
+# marks the frame boundaries for replay/rewind, and cmuclear
+# (optional) which is how you clear the canvas for subsequent
+# redrawing  and delimit a real drawing frame coming up...
+cmuframe
+cmuclear
+
+# drawing commands all look alike:
+#   First set start with a 2 letter command opcode, 
+#   then coordinates as real nums
+#   then a colorname in quotes
+# we support these commands:
+# 
+# ro minx miny maxx maxy color     
+#           = rectangle draw, outlined by not filled
+#
+# rf minx miny maxx maxy color     
+#           = rectangle draw, outlined (in black) and filled
+#
+# ln x1 y1 x2 y2 color
+#           = line draw, filled (stroked) with color
+#
+# ar x1 y1 x2 y2 color
+#           = arrow draw, filled (stroked) with color
+#
+# ov minx miny maxx maxy color
+#           = oval draw, outlined in black and  filled
+#
+# tc x y txt color
+#           = text draw, anchor=left-right center, "txt" is string
+#
+# tnw x y txt color
+#           = text draw, anchor=northwest corner, "txt" is string
+#
+# tsw x y txt color
+#           = text draw, anchor=southwest corner, "txt" is string
+#
+#
+# We also support the same set of commands with "ballon help" popups
+#   these commands all end in "b" and take one more string to display when
+#   you let the cursor hover over the drawn object.  Also, the object turns RED
+#   when you're hovering over it and the balloon is visible.  No choice on this color
+#   (yet).
+#
+# we support these commands:
+# 
+# rob minx miny maxx maxy color   "balloon help string"    
+#           = rectangle draw, outlined by not filled, with balloon popup
+#
+# rfb minx miny maxx maxy color   "balloon help string"     
+#           = rectangle draw, outlined (in black) and filled, with balloon popup
+#
+# lnb x1 y1 x2 y2 color  "balloon help string" 
+#           = line draw, filled (stroked) with color, with balloon popup
+#
+# arb x1 y1 x2 y2 color  "balloon help string" 
+#           = arrow draw, filled (stroked) with color, with balloon popup
+#
+# ovb minx miny maxx maxy color  "balloon help string" 
+#           = oval draw, outlined in black and  filled, with balloon popup
+#
+#
+#
+
+
+# so... a couple of trivial real drawing commands
+rf  10 10 30 30  "blue2" ;
+rf  70 70 80 80  "DarkGreen" ;
+ro  20 20 40 40  "IndianRed" ;
+ln  5  5  25 25  "yellow" ;
+ar  5 25  25 5   "purple" ;
+ov  50 50 60 70  "HotPink" ;
+tc  50 50 "CENTERED TEXT AT (50 50)" "black" ;
+tnw 0  80 "Northwest text at (0,80)"  "DarkGreen" ;
+tsw 70 70 "Southwest text at (70,70)" "blue2" ;
+rf  50 0 100 10  "black" ;
+tc  75 5 "THIS IS SOME WHITE TEXT"  "white" ;
+
+# lets end that set of drawn objects as a frame
+# and start a NEW movie frame by clearing all
+cmuframe
+cmuclear
+
+# HOW COLORS WORK IN cmuView
+#
+#  ...somewhat simply.  You get to pick ONLY from a set of
+#  predefined colors.  You MUST use only these colors.
+#  If you drop in a different color, cmuView barfs and dies.
+#  This is a side effect of the current color management
+#  architecture--cmuView does not (cannot yet) read in and
+#  "discover" and then cache all the colors you use.
+#  Instead, it just builds the layer palette from
+#  a default set of "known" colors, and assumes you will
+#  only ever use these colors.  This is simple, just
+#  a bit constraining.  If you want to use different
+#  colors, you need to edit the color list in the
+#  cmuView.tcl source code.
+#  The current set of colors is:
+#    "black" 
+#    "white" 
+#    "red"
+#    "DarkGreen" 
+#    "SpringGreen" 
+#    "yellow" 
+#    "RosyBrown"
+#    "SandyBrown" 
+#    "IndianRed" 
+#    "blue2" 
+#    "purple" 
+#    "HotPink" 
+#    "LightPink"
+#    "LightSalmon1" 
+#    "sienna4"
+#    "LightBlue3" 
+#    "SteelBlue"
+#    "LightPink"
+#    "chocolate1"
+#    "OliveDrab3"
+#    "turquoise"
+#
+# which is admittedly esoteric, but it does look
+# nice.  To change to something more pedestrian,
+# just edit the color list in the cmuView2.tcl
+# source.  Scan for the word COLORLIST and you will
+# find it.  
+#
+# Color Caveats
+#  1.  You MUST have "black" as a color
+#  2.  The color palette treats colored text
+#      differently.  "white" text == "WHITE" text
+#      and any OTHER color text == "DARK" text.
+#      You can currently turn on/off WHITE and DARk text
+#      but not individual colors of text.
+#  3.  Yes, its currently Case Sensitive on color names.
+#      Sorry... you might want to edit the COLORLIST set
+#      to a more pedestrian list of lowercase color names.
+
+
+# let's just list all the colors
+rf 0 0 5 5     "black" ;
+rf 5 5 10 10   "white" ;
+rf 10 10 15 15 "DarkGreen";
+rf 15 15 20 20 "SpringGreen";
+rf 20 20 25 25 "yellow";
+rf 25 25 30 30 "RosyBrown";
+rf 30 30 35 35 "SandyBrown";
+rf 35 35 40 40 "IndianRed";
+rf 40 40 45 45 "blue2";
+rf 45 45 50 50 "purple";
+rf 50 50 55 55 "HotPink";
+rf 55 55 60 60 "LightPink";
+rf 60 60 65 65 "LightSalmon1";
+rf 65 65 70 70 "LightBlue3";
+rf 70 70 75 75 "sienna4";
+rf 75 75 80 80 "LightBlue3";
+rf 80 80 85 85 "SteelBlue";
+rf 85 85 90 90 "chocolate1";
+rf 90 90 95 95 "OliveDrab3";
+rf 95 95 100 100 "turquoise";
+
+# and a little text next to each
+tnw 5 0     "black"  "black" ;
+tnw 10 5   "white"  "black" ;
+tnw 15 10 "DarkGreen" "black" ;
+tnw 20 15 "SpringGreen" "black" ;
+tnw 25 20 "yellow" "black" ;
+tnw 30 25 "RosyBrown" "black" ;
+tnw 35 30 "SandyBrown" "black" ;
+tnw 40 35 "IndianRed" "black" ;
+tnw 45 40 "blue2" "black" ;
+tnw 50 45 "purple" "black" ;
+tnw 55 50 "HotPink" "black" ;
+tnw 60 55 "LightPink" "black" ;
+tnw 65 60 "LightSalmon1" "black" ;
+tnw 70 65 "LightBlue3" "black" ;
+tnw 75 70 "sienna4" "black" ;
+tnw 80 75 "LightBlue3" "black" ;
+tnw 85 80 "SteelBlue" "black" ;
+tnw 90 85 "chocolate1" "black" ;
+tnw 95 90 "OliveDrab3" "black" ;
+tnw 100 95 "turquoise" "black" ;
+
+# delimit the frame and clear the screen again.  
+# Note, you can do multiple commands on a line if you separate
+# with a semicolon
+cmuframe;  cmuclear;
+
+# let's list all the colors again, but now with balloon popups
+rfb 0 0 5 5     "black"        "Hi, I'm black...";
+rfb 5 5 10 10   "white"        "Hi, I'm white...";
+rfb 10 10 15 15 "DarkGreen"    "You know, my sister was once scared by a moose...";
+rfb 15 15 20 20 "SpringGreen"  "A big mooose";
+rfb 20 20 25 25 "yellow"       "A big, Norwegian moose";
+rfb 25 25 30 30 "RosyBrown"    "I hear there's a lot of moose in Norway";
+rfb 30 30 35 35 "SandyBrown"   "Really, like, a LOT of moose in Norway";
+rfb 35 35 40 40 "IndianRed"    "I mean, not just like a few moose";
+rfb 40 40 45 45 "blue2"        "(How come the plural of 'moose' is 'moose'?)";
+rfb 45 45 50 50 "purple"       "That's just weird";
+rfb 50 50 55 55 "HotPink"      "Is that, like, a Norwegian thing?";
+rfb 55 55 60 60 "LightPink"    "Or, an English think?" ;
+rfb 60 60 65 65 "LightSalmon1" "Do moose like salmon?";
+rfb 65 65 70 70 "LightBlue3"   "Do moose like lightblue?";
+rfb 70 70 75 75 "sienna4"      "What the heck is sienna?" ;
+rfb 75 75 80 80 "LightBlue3"   "HEY -- didn't we just DO this color???";  
+rfb 80 80 85 85 "SteelBlue"    "Hey, it's Pittsburgh, we just had to...";
+rfb 85 85 90 90 "chocolate1"   "Mmmmmm, chooocolate....";
+rfb 90 90 95 95 "OliveDrab3"   "Ewww.";
+rfb 95 95 100 100 "turquoise"  "Do moose like... nevermind...";
+
+# this very last frame must also delimited by cmuframe cmuclear, BUT
+# the very last thing in the file MUST be "cmuexit",
+# since this is how the replay mechanism tracks that
+# that it has all the frames and can enable playback
+cmuframe
+cmuclear
+cmuexit
+
+# 
+# WHAT TO DO TO RUN THIS TRIVIAL MOVIE
+#
+#  1. Start up a wish8.0 shell
+#  2. Source the cmuView.tcl script, and up comes
+#     the viewer.
+#  3. use the file browser dialog to find and
+#     open the README.mv movie (this file).
+#  4. It will read each frame of the file and
+#     pause while it does this.
+#  5. Use the VCR style buttons to forward and back
+#     thru the movie
+#  6. Use zoom to fit to fit all the objs on the screen
+#  7. Use mouse clicks for navigation
+#        LEFT click is zoom in to point
+#        RIGHT click is zoom out to point
+#        LEFT CLICK DRAG (draws a yellow box) is ZOOM INTO THIS BOX
+#        MIDDLE CLICK gives you a little hand icon, lets
+#           you drag the canvas around inside the view 
+#           maintained by the scrollbars
+# 

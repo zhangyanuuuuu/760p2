@@ -6,7 +6,7 @@
 #include <math.h>
 #include <assert.h>
 #include "cg_user.h"
-#define DEBUG
+#undef DEBUG
 using namespace std;
 
 const string delimiter = " \t\n\r";
@@ -44,7 +44,7 @@ net* Nets;
 pin* Pins;
 int** gateNetList;
 int* gateNetListSize;
-
+int numGrids;
 //////////////////////////////////////////
 //                                      // 
 //             parser                   //
@@ -68,6 +68,7 @@ parse(char* fileName)
 		inFile >> numGates >> numNets;
 
 		Ng = chipHeight*chipWidth/(grid_length*grid_length);
+        numGrids=sqrt(Ng);
 #ifdef DEBUG
 		cout<<"chip width is "<<chipWidth<<" and chip height is "<<chipHeight<<endl;
 		cout<<"unit size is "<<Unit<<endl;
@@ -237,53 +238,126 @@ double p_potential(double x){
  return ans;
 }
 
-double gate_covered_grids(double x, double y, int i){ 
+double gate_covered_grids(double x, double y, int i, double**gr){ 
    double val=0;
    int left,right,up,down;
    double potential;
         left=max(0,x-Gates[i].width/2-r);
-        right=min(100,x+Gates[i].width/2+r);
+        right=min(numGrids-1,x+Gates[i].width/2+r);
         up=max(0,y-r);
-        down=min(100,y+r);
+        down=min(numGrids-1,y+r);
         for(int row=up;row<=down;row++)
           for(int col=left;col<=right;col++){
             potential=p_potential(fabs(row-x))*p_potential(fabs(col-y))*Gates[i].width/(r*r);
-            val+=pow(potential-Cg,2);
+           // val+=pow(potential-Cg,2);
+            gr[row][col]+=potential;
 
         }
   // cout<<"gate"<<val<<endl;
+
    return val;
  
 }
 double
 myval_overlap(double *x, INT n){
    double val=0;
+   double **gr=new double* [numGrids];
+   for(int i=0;i<numGrids;i++){
+
+            gr[i]=new double[numGrids];
+    }
+   for(int i=0;i<numGrids;i++)
+     for(int j=0;j<numGrids;j++){
+        gr[i][j]=0;
+    }
    for(int i=0;i<n;i+=2){
-      val+=gate_covered_grids(x[i],x[i+1],i/2+1);
+      gate_covered_grids(x[i],x[i+1],i/2+1,gr);
      }
+
+
+    for(int i=0;i<numGrids;i++)
+      for(int j=0;j<numGrids;j++)
+        {
+            val+=pow(gr[i][j]-Cg,2);
+        }  
+#ifdef DEBUG 
    cout<<"val for overlap"<<val<<endl;
+#endif
+   return val;
+}
+double overlap_update(double oldpos[2], double newpos[2], int i, double**gr){
+
+   double val=0;
+   int left,right,up,down;
+   double potential;
+   double **gg=new double* [numGrids];
+   for(int k=0;k<numGrids;k++){
+
+            gg[k]=new double[numGrids];
+    }
+        left=max(0,min(oldpos[0],newpos[0])-Gates[i].width/2-r);
+        right=min(numGrids-1,max(oldpos[0],newpos[0])+Gates[i].width/2+r);
+        up=max(0,min(oldpos[1],newpos[1])-r);
+        down=min(numGrids-1,max(oldpos[1],newpos[1])+r);
+   for(int row=up;row<=down;row++)
+    for(int col=left;col<=right;col++){
+        gg[row][col]=gr[row][col];
+        gg[row][col]-=p_potential(fabs(row-oldpos[0]))*p_potential(fabs(col-oldpos[1]))*Gates[i].width/(r*r);
+
+        gg[row][col]+=p_potential(fabs(row-newpos[0]))*p_potential(fabs(col-newpos[1]))*Gates[i].width/(r*r);
+        
+        val+=-pow(gr[row][col]-Cg,2)+pow(gg[row][col]-Cg,2);
+    }
    return val;
 }
 void  
 mygrad_overlap(double *g, double *x, INT n){
-    
+   double **gr=new double* [numGrids];
+   double old[2],nnew[2];
+    for(int i=0;i<numGrids;i++){
+
+            gr[i]=new double[numGrids];
+    }
+   for(int i=0;i<numGrids;i++)
+     for(int j=0;j<numGrids;j++){
+        gr[i][j]=0;
+    }
+   for(int i=0;i<n;i+=2){
+      gate_covered_grids(x[i],x[i+1],i/2+1,gr);
+     }
    double potential;
    int left,right,up,down;
-   double x_minus,x_plus,y_minus,y_plus,x_delta,y_delta;
+     double x_minus,x_plus,y_minus,y_plus,x_delta,y_delta;
     for(int i=0;i<n;i+=2){      
-        x_plus=gate_covered_grids(x[i]+delta_h,x[i+1],i/2+1);
+      /*  x_plus=gate_covered_grids(x[i]+delta_h,x[i+1],i/2+1);
         x_minus=gate_covered_grids(x[i]-delta_h,x[i+1],i/2+1);
         g[i]=(x_plus-x_minus)/(2*delta_h);
         y_plus=gate_covered_grids(x[i],x[i+1]+delta_h,i/2+1);
         y_minus=gate_covered_grids(x[i],x[i+1]-delta_h,i/2+1);
         g[i+1]=(y_plus-y_minus)/(2*delta_h);               
+    */
+        old[0]=x[i];
+        old[1]=x[i+1];
+        nnew[0]=x[i]+delta_h;
+        nnew[1]=x[i+1];
+        x_plus=overlap_update(old,nnew,i/2+1,gr);
+        nnew[0]=x[i]-delta_h;
+        x_minus=overlap_update(old,nnew,i/2+1,gr);
+        nnew[0]=x[i];
+        nnew[1]=x[i+1]+delta_h;
+        y_plus=overlap_update(old,nnew,i/2+1,gr);
+        nnew[1]=x[i+1]-delta_h;
+        y_minus=overlap_update(old,nnew,i/2+1,gr);
 
+        g[i]=(x_plus)/(delta_h);
+        g[i+1]=(y_plus)/(delta_h);               
 //		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
     }
-
+#ifdef DEBUG
 	for (int i = 0; i < n ; i++) {
-		cout<<"Direvative for gate "<<i/2+1<<" is "<<g[i]<<endl;
+		cout<<"Derivative for gate "<<i/2+1<<" is "<<g[i]<<endl;
 	}
+#endif
 }
 double get_boundary_pel(double x, double y, int i){
        
@@ -473,11 +547,11 @@ main(int argc, char *argv[])
 	cg_default(&Parm);
 	cg_tol = 1.e-5;
 
-#ifdef DEBUG
 	double *g = new double [n];
 	costfungrad(g,x,n);
+#ifdef DEBUG
 	for (int i = 0; i < n ; i++) {
-		cout<<"Derevative for gate "<<i/2+1<<" is "<<g[i]<<endl;
+		cout<<"Derivative for gate "<<i/2+1<<" is "<<g[i]<<endl;
 	}
 #endif
 
@@ -490,5 +564,6 @@ main(int argc, char *argv[])
 	}
 	cout<<"HPWL is "<<costfun(x,numGates*2)<<endl;
 #endif
-	
+    for (int i=0;i<numGates;i++)
+        printf("%d %f %f\n",i+1,x[2*i],x[2*i+1]);	
 }
