@@ -45,6 +45,7 @@ pin* Pins;
 int** gateNetList;
 int* gateNetListSize;
 int numGrids;
+int *NetPins;
 //////////////////////////////////////////
 //                                      // 
 //             parser                   //
@@ -121,6 +122,8 @@ parse(char* fileName)
 		cout<<"Num of pins is "<<numPins<<endl;
 #endif
 		Pins = new pin [numPins + 1];
+		NetPins=new int [numNets+1];
+ 		for(int i=0;i<=numNets;i++) NetPins[i]=0;
 		for (int i = 1; i <= numPins; i++) {
 			getline(inFile, line);
 			stringstream ss(line);
@@ -129,6 +132,7 @@ parse(char* fileName)
 			assert(count == i);
 #endif
 			ss >> Pins[i].netNum >> Pins[i].px >> Pins[i].py;
+    			NetPins[Pins[i].netNum]=i;
 		}
 	} else {
 		cout<<"Unable to open file\n";
@@ -187,6 +191,14 @@ myvalue(double *x, INT n)
 			sum_yp += exp(x[index_y]/alpha);
 			sum_yn += exp(-x[index_y]/alpha);
 		}
+
+		if( NetPins[i]!=0){
+                        sum_xp +=exp(Pins[NetPins[i]].px/alpha);
+			sum_xn +=exp(-Pins[NetPins[i]].px/alpha);
+			sum_yp +=exp(Pins[NetPins[i]].py/alpha);
+			sum_yn +=exp(-Pins[NetPins[i]].py/alpha);
+		}
+
 		sumAllNets += alpha*(log(sum_xp) + log(sum_xn) + log(sum_yp) + log(sum_yn));
 	}
 
@@ -214,6 +226,13 @@ mygrad(double *g, double *x, INT n)
 				xn += exp(-x[index_x]/alpha);
 				yp += exp(x[index_y]/alpha);
 				yn += exp(-x[index_y]/alpha);
+			}
+
+			if(NetPins[net_idx]!=0){
+                        xp +=exp(Pins[NetPins[net_idx]].px/alpha);
+			xn +=exp(-Pins[NetPins[net_idx]].px/alpha);
+			yp +=exp(Pins[NetPins[net_idx]].py/alpha);
+			yn +=exp(-Pins[NetPins[net_idx]].py/alpha);
 			}
 
 			xp_plus = xp - exp(x[i]/alpha) + exp((x[i]+delta_h)/alpha);
