@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -11,10 +12,10 @@ using namespace std;
 
 const string delimiter = " \t\n\r";
 //parameters needs to be turned
-const double alpha = 1.0;
-const double r = 2.0;
+double alpha = 1.0;
+double r = 2.0;
 const double delta_h = 0.01;
-const double grid_length = 0.5;
+double grid_length = 0.5;
 
 //data structure definition
 struct pin {
@@ -46,6 +47,7 @@ int** gateNetList;
 int* gateNetListSize;
 int numGrids;
 int *NetPins;
+double Wwl,Wdp,Wbp;
 //////////////////////////////////////////
 //                                      // 
 //             parser                   //
@@ -261,10 +263,10 @@ double gate_covered_grids(double x, double y, int i, double**gr){
    double val=0;
    int left,right,up,down;
    double potential;
-        left=max(0,x-Gates[i].width/2-r);
-        right=min(numGrids-1,x+Gates[i].width/2+r);
-        up=max(0,y-r);
-        down=min(numGrids-1,y+r);
+        left=ceil(max(0,x-Gates[i].width/2-r)/(2*grid_length));
+        right=floor(min(numGrids-1,x+Gates[i].width/2+r)/(2*grid_length));
+        up=ceil(max(0,y-r)/(2*grid_length));
+        down=floor(min(numGrids-1,y+r)/(2*grid_length));
         for(int row=up;row<=down;row++)
           for(int col=left;col<=right;col++){
             potential=p_potential(fabs(row-x))*p_potential(fabs(col-y))*Gates[i].width/(r*r);
@@ -314,10 +316,10 @@ double overlap_update(double oldpos[2], double newpos[2], int i, double**gr){
 
             gg[k]=new double[numGrids];
     }
-        left=max(0,min(oldpos[0],newpos[0])-Gates[i].width/2-r);
-        right=min(numGrids-1,max(oldpos[0],newpos[0])+Gates[i].width/2+r);
-        up=max(0,min(oldpos[1],newpos[1])-r);
-        down=min(numGrids-1,max(oldpos[1],newpos[1])+r);
+        left=ceil(max(0,min(oldpos[0],newpos[0])-Gates[i].width/2-r)/(2*grid_length));
+        right=floor(min(numGrids-1,max(oldpos[0],newpos[0])+Gates[i].width/2+r)/(2*grid_length));
+        up=ceil(max(0,min(oldpos[1],newpos[1])-r)/(2*grid_length));
+        down=floor(min(numGrids-1,max(oldpos[1],newpos[1])+r)/(2*grid_length));
    for(int row=up;row<=down;row++)
     for(int col=left;col<=right;col++){
         gg[row][col]=gr[row][col];
@@ -416,7 +418,7 @@ double mygrad_boudary(double*g, double *x, INT n){
 }
 double 
 costfun(double *x, INT n){
-   return myvalue(x,n)+myval_overlap(x,n)+myval_boundary(x,n);
+   return Wwl*myvalue(x,n)+Wdp*myval_overlap(x,n)+Wbp*myval_boundary(x,n);
 
 }
 
@@ -540,6 +542,7 @@ mygrad(double *g, double *x, INT n)
 int
 main(int argc, char *argv[])
 {
+	srand(time(NULL));
 	if (argc < 2) {
 		printf("Usage: ./exe <filename>\n");
 		exit(-1);
@@ -575,14 +578,25 @@ main(int argc, char *argv[])
 #endif
 
 	//solve it
-  printf("FIRST CALL TO CG_DESCENT, cg_tol=%g\n", cg_tol);
-	cg_return = cg_descent(x, n, &Stats, &Parm, cg_tol, costfun, costfungrad, NULL, NULL);
+	Wdp=1;
+        Wbp=1;
+	for (int ite=0;ite<5;ite++){
+          printf("FIRST CALL TO CG_DESCENT, cg_tol=%g\n", cg_tol);
+	  Wwl=myval_overlap(x,numGates*2)/myvalue(x,numGates*2);
+	  grid_length=1;
+	  r=2;
+ 	  alpha=grid_length*r;
+            
+	  cg_return = cg_descent(x, n, &Stats, &Parm, cg_tol, costfun, costfungrad, NULL, NULL);
 #ifdef DEBUG
 	for (int i = 0; i < numGates; i++) {
 		printf("gate %d is at position (%f,%f)\n", i+1, x[2*i], x[2*i+1]);
 	}
 	cout<<"HPWL is "<<costfun(x,numGates*2)<<endl;
 #endif
-    for (int i=0;i<numGates;i++)
-        printf("%d %f %f\n",i+1,x[2*i],x[2*i+1]);	
+	
+    	for (int i=0;i<numGates;i++)
+        	printf("%d %f %f\n",i+1,x[2*i],x[2*i+1]);
+	}	
+        cout<<costfun(x,numGates*2)<<endl;
 }
